@@ -1,0 +1,98 @@
+Private Sub CommandButton3_Click() '產生點名單
+
+Dim i As Integer
+Dim j As Integer
+Dim k As Integer
+Dim m As Integer
+Dim page_count As Integer '總頁數
+Dim page_now As Integer '現在頁數
+Dim class_count As Integer '上課次數
+Dim subject_type As String '科目類型
+Dim subject_name As String
+Dim subject_pos As Integer
+Dim subject_date As String
+
+subject_type = Worksheets("操作面板").Range("A3").Value
+subject_name = Worksheets("操作面板").Range("A6").Value
+
+class_count = 0
+page_count = 1
+page_now = 1
+If subject_type = "高二多元選修" Then
+    class_count = Worksheets("上課日期").Range("B2").Value
+    subject_pos = 2
+ElseIf subject_type = "高三多元選修" Then
+    class_count = Worksheets("上課日期").Range("C2").Value
+    subject_pos = 3
+ElseIf subject_type = "高三彈性學習" Then
+    class_count = Worksheets("上課日期").Range("D2").Value
+    subject_pos = 4
+End If
+
+i = 2
+Do Until Len(Worksheets("配課").Cells(i, 2).Value) = 0
+    If subject_name = Worksheets("配課").Cells(i, 2).Value Then
+        Worksheets("點名單模板").Copy After:=Worksheets("操作面板")
+        Worksheets("點名單模板 (2)").Name = "點名單"
+        Worksheets("點名單").Range("D2").Value = Worksheets("配課").Cells(i, 2).Value '科目名稱
+        Worksheets("點名單").Range("D3").Value = Worksheets("配課").Cells(i, 1).Value '科目類型
+        Worksheets("點名單").Range("O3").Value = Worksheets("配課").Cells(i, 3).Value '授課教師
+        Worksheets("點名單").Range("D4").Value = Worksheets("配課").Cells(i, 4).Value + subject_date '上課時間
+        Worksheets("點名單").Range("O4").Value = Worksheets("配課").Cells(i, 5).Value '上課地點
+        
+        '填入學生名單
+        j = 2
+        k = 1
+        subject_date = ""
+        Do Until Len(Worksheets("選課").Cells(j, 1).Value) = 0
+            If (subject_name + subject_period) = Worksheets("選課").Cells(j, 2).Value + Worksheets("選課").Cells(j, 7).Value Then
+                '點名單先準備下一行
+                Worksheets("點名單").Rows(k + 8).Insert CopyOrigin:=xlFormatFromLeftOrAbove
+                
+                Worksheets("點名單").Cells(k + 7, 1).Value = k  '編號
+                Worksheets("點名單").Cells(k + 7, 2).Value = Worksheets("選課").Cells(j, 3).Value  '學號
+                Worksheets("點名單").Cells(k + 7, 3).Value = Worksheets("選課").Cells(j, 4).Value  '班級
+                Worksheets("點名單").Cells(k + 7, 4).Value = Worksheets("選課").Cells(j, 5).Value  '座號
+                Worksheets("點名單").Cells(k + 7, 5).Value = Worksheets("選課").Cells(j, 6).Value  '姓名
+                k = k + 1
+            End If
+            j = j + 1
+        Loop
+        '刪除多準備的最後2行
+        Worksheets("點名單").Cells(k + 7, 1).EntireRow.Delete
+        Worksheets("點名單").Cells(k + 7, 1).EntireRow.Delete
+        If class_count > 0 Then
+            page_count = class_count \ 6
+            If class_count Mod 6 <> 0 Then
+                page_count = page_count + 1
+            End If
+            '開始填日期
+            for m = 1 to 6
+                Worksheets("點名單").Cells(5, 5+2*m).Value = Worksheets("上課日期").Cells(j, 3).Value  '學號
+            next m
+            
+        Else
+            Worksheets("點名單").Name = Worksheets("點名單").Range("D2").Value + "點名單"
+        end if
+        'If Worksheets("操作面板").Range("D9").Value = 1 Then
+        '列印
+            '印好了就可以刪掉：
+            'Worksheets("點名單").PrintOut
+            'Worksheets("點名單").Delete
+            '回到操作面板
+            'Worksheets("操作面板").Activate
+            'Range("A6").Select
+            'MsgBox "點名單已列印"
+
+        'Else
+        '新工作表
+            '改名為科目名稱
+            'Worksheets("點名單").Name = Worksheets("點名單").Range("D2").Value + "點名單"
+        'End If
+
+    Exit Do
+    End If
+    i = i + 1
+Loop
+
+End Sub
