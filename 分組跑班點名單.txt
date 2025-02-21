@@ -12,6 +12,7 @@ Dim subject_name As String
 Dim subject_pos As Integer
 Dim subject_date As String
 
+
 subject_type = Worksheets("操作面板").Range("A3").Value
 subject_name = Worksheets("操作面板").Range("A6").Value
 
