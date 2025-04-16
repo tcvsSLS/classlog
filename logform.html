@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<!-- https://tinyurl.com/tcvs-log -->
+<head>
+<!-- Required meta tags -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Latest compiled and minified CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Latest compiled JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 產生PDF所需程式庫 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500&display=swap" rel="stylesheet">
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<style>
+*{font-family: 'Noto Sans TC', sans-serif;}
+.header{
+  color:AntiqueWhite;
+  background-color:LightSeaGreen;
+  padding: 10px;
+}
+</style>
+</head>
+
+<body onload="getuser()"><!--取得使用者資料-->
+
+<div class="container-fluid">
+  <div class="header">
+    <h4>國立頭城高級家事商業職業學校<BR><span id='syear'></span>學年度第<span id='sterm'></span>學期<BR>授課日誌線上填表服務</h4>
+    <div style="text-align: right;">系統維護：教務處實驗研究組<BR>校內分機111或E-mail：tcvschss@tcvs.ilc.edu.tw</div>
+  </div>
+  <div id="unameform"><span style='color:DodgerBlue;'>填表人身份驗證中......</span></div>  
+  <div id="snameform"></div>
+  <div id="functionform"></div>
+  <HR>
+  <div id="log-result"></div>  
+</div>
+
+<script>
+
+let typedata;
+let teacherdata;
+let sendstype='';
+let sendsname='';
+let sendtname='';
+let presdate='';
+let oldlog;
+let nowlog;
+let username='';
+let userplace="";
+let subjectstatus="";
+let schoolyear;
+let schoolterm;
+let nowdate;
+
+function getuser() {
+  nowdate=new Date();
+  // schoolyear='113';
+  schoolyear=nowdate.getFullYear()-1911;
+  if(nowdate.getMonth()<7){schoolyear=schoolyear-1;}
+  schoolterm='1';
+  if(nowdate.getMonth()<7 && nowdate.getMonth()>0){schoolterm=2;}
+  document.getElementById("syear").innerHTML = schoolyear;
+  document.getElementById("sterm").innerHTML = schoolterm;
+  google.script.run.withSuccessHandler(getname).getUserName();
+}
+
+function getname(user){
+  username = user[0];
+  userplace = user[1];
+  if(userplace=='非本校人員'){
+    document.getElementById("unameform").innerHTML = "1.請用<a href='https://myaccount.google.com/' target='_blank'>頭城家商電子郵件帳號</a>登入<BR><span style='color:Red;'>2.登入後再重新載入本頁面（按F5鍵或Ctrl+R鍵）</span><BR>3.如果不成功，請改用無痕視窗（或是「訪客網頁」、「InPrivate瀏覽」）試試看";//(<a href='https://drive.google.com/file/d/1icrQtktmvRgkr9Oq-sxbitLud5L4oALZ/view?usp=sharing' target='_blank'>操作步驟</a>)
+    }
+  else{
+    google.script.run.withSuccessHandler(getsubjecttype).getSubjectType();
+  }
+}
+function getsubjecttype(stypedata){
+  typedata = stypedata;
+  showusername();
+}
+function showusername(){
+  document.getElementById("unameform").innerHTML = "填表人：<span style='color:DodgerBlue;'>"+username+"</span><BR>（不是"+username+"？請按<a href='https://myaccount.google.com/' target='_blank'>這裡登出帳號，再重新登入</a>）";
+  let userdata = "";
+  if(userplace == "教師"){
+    userdata = "您（<span style='color:DodgerBlue;'>"+username+"</span>）要填寫的是："
+      +"<input type='button' onclick='getsubjectname(\"self-subject\")' value='本人授課'>　"
+      +"<input type='button' onclick='showsubjecttype()' value='代課'>　"
+      //+"<input type='button' onclick='showsubjecttype()' value='選擇科目類型'>　"
+      +"的科目資料<BR>（不是"+username+"？請按<a href='https://myaccount.google.com/' target='_blank'>這裡登出帳號，再重新登入</a>）";
+    document.getElementById("unameform").innerHTML = userdata;
+  }else{
+    document.getElementById("snameform").innerHTML = "（資料準備中......）";
+    showsubjecttype();
+  }
+}
+function showsubjecttype(){
+  document.getElementById("unameform").innerHTML = "填表人：<span style='color:DodgerBlue;'>"+username+"</span>";
+  let typelog = '科目類型：<select id="typeSelect">';
+  for(let i=1;i<typedata.length;i++){
+    typelog = typelog +'<option value="'+typedata[i][0]+'">'+typedata[i][0];
+    if(typedata[i][1].slice(0,2)=="每週"){typelog = typelog +'（'+typedata[i][1]+'）';}
+  }
+  typelog = typelog +'</select>';
+  typelog = typelog +'<input type="button" onclick="getsubjectname(\'other-subject\')" value="確定"><BR>';
+  document.getElementById("snameform").innerHTML = typelog;
+}
+function getsubjectname(sstatus){
+  document.getElementById("unameform").innerHTML = "填表人：<span style='color:DodgerBlue;'>"+username+"</span>";
+  subjectstatus=sstatus;
+  if(subjectstatus == 'self-subject'){
+    sendtname = username;
+  }else{
+    sendstype = document.getElementById("typeSelect").value;
+  }
+  document.getElementById("snameform").innerHTML = "（資料準備中......）";
+  if(teacherdata == null){
+    google.script.run.withSuccessHandler(getteacherdata).getTeacherData();
+  }else{
+    choosesubject();
+  }
+}
+function getteacherdata(tdata){
+  if(teacherdata == null){teacherdata=tdata;}choosesubject();
+}
+
+function choosesubject() {
+  document.getElementById("functionform").innerHTML = "";
+  document.getElementById("log-result").innerHTML = "";
+
+  let snameForm = document.getElementById("snameform");
+  let options = "";
+  let scount = 0;
+
+  if (!Array.isArray(teacherdata)) {
+    console.error("teacherdata 無效或未定義");
+    snameForm.innerHTML = "<span style='color:Red;'>無法載入科目資料</span>";
+    return;
+  }
+
+  teacherdata.forEach(data => {
+    const [subjectType, subjectName, teacherName, classTime, , status] = data;
+
+    const isSelfSubject = subjectstatus === "self-subject" && teacherName === sendtname;
+    const isOtherSubject = subjectstatus !== "self-subject" && subjectType === sendstype;
+
+    if ((isSelfSubject || isOtherSubject) && status !== "未開始") {
+      const value = `${subjectType}|${subjectName}|${teacherName}|${classTime}|${status}`;
+      const displayText = `${subjectType} - ${subjectName} - ${teacherName}`;
+      options += `<option value="${value}">${displayText}</option>`;
+      scount++;
+    }
+  });
+
+  if (scount > 0) {
+    let html = `
+      <label for="subjectSelect">選擇科目：</label>
+      <select id="subjectSelect">${options}</select>
+      <input type="button" onclick="showsname()" value="確定"><br>`;
+
+    if (subjectstatus === "other-subject" && userplace === "教師") {
+      html += `<input type="button" onclick="getsubjectname('self-subject')" value="選擇本人授課科目">`;
+    }
+
+    html += `<input type="button" onclick="showsubjecttype()" value="填寫其他教師授課科目資料"><br>`;
+    snameForm.innerHTML = html;
+  } else {
+    snameForm.innerHTML = `
+      <span style="color:Red;">授課科目無需線上填教室日誌或已結案</span>，請關閉視窗，或
+      <input type="button" onclick="showsubjecttype()" value="填寫其他教師授課科目資料">`;
+  }
+}
+
+function showsname() {
+  const subjectSelect = document.getElementById("subjectSelect");
+  if (!subjectSelect || subjectSelect.value === "") {
+    document.getElementById("snameform").innerHTML = `
+      <span style='color:Red;'>未選擇科目</span>
+      <input type='button' onclick='choosesubject()' value='重新選擇'>`;
+    return;
+  }
+
+  const subjectData = subjectSelect.value.split("|");
+  if (subjectData.length < 5) {
+    document.getElementById("snameform").innerHTML = `
+      <span style='color:Red;'>科目資料格式錯誤</span>
+      <input type='button' onclick='choosesubject()' value='重新選擇'>`;
+    return;
+  }
+
+  [sendstype, sendsname, sendtname, presdate, subjectStatus] = subjectData;
+
+  const infoBlock = `
+    <table>
+      <tr><td>授課科目：</td><td><span style='color:DodgerBlue;'>${sendstype}　${sendsname}</span></td></tr>
+      <tr><td>表定時間：</td><td><span style='color:DodgerBlue;'>${presdate}</span></td></tr>
+      <tr><td>授課教師：</td><td><span style='color:DodgerBlue;'>${sendtname}</span></td></tr>
+    </table>
+    <input type='button' onclick='choosesubject()' value='選擇其他科目'>`;
+
+  if (subjectStatus === "結案") {
+    document.getElementById("snameform").innerHTML = `
+      <span style='color:DodgerBlue;'>${sendstype}　${sendsname}</span>　本科目已結案
+      <input type='button' onclick='choosesubject()' value='選擇其他科目'>`;
+  } else {
+    document.getElementById("snameform").innerHTML = infoBlock;
+    getlogdata(); // 呼叫取得該科目日誌資料
+  }
+}
+
+function getlogdata(){
+  document.getElementById("log-result").innerHTML = "<span style='color:Red;'>等待授課日誌資料載入......</span>";
+  google.script.run.withSuccessHandler(transferlogdata).getlog(sendstype,sendsname);
+}
+
+function transferlogdata(oldlog){
+  nowlog=[];
+  for(let i=0;i<oldlog.length;i++){nowlog.push(oldlog[i]);}
+  let isperiodic = false;
+  for(let i=0; i<typedata.length; i++){
+    if(sendstype==typedata[i][0]){
+      if(typedata[i][1]!="非固定週期"){isperiodic=true;}
+    }
+  }
+  showlogdata(isperiodic);
+}
+
+function showlogdata(isperiodic){
+  let dataresult='本科目已執行資料如下：（<span style="color:Red;">請直接修改</span><span style="color:DodgerBlue;">藍字部分</span>）';
+  dataresult += "<form name='logform'>"
+  +"<div class='row text-bg-secondary'>"
+    +"<div class='col-sm-1'";
+  if(isperiodic){dataresult += "style=' display:none;'";}
+  dataresult += ">勾選刪除</div><div class='col-sm-1'>項次</div>"
+    +"<div class='col-sm-3'>上課時間</div>"
+    +"<div class='col-sm-5'>教學內容</div>"
+    +"<div class='col-sm-2'>填表人</div>"
+  +"</div>";
+  let count=0;
+  for(let i=0;i<nowlog.length;i++){
+    if((count % 2)==0){dataresult += "<div class='row'>";}else{dataresult += "<div class='row text-bg-light'>";}
+    dataresult += "<div class='col-sm-1'";
+    if(isperiodic){dataresult += " style='display:none;'";}
+    dataresult += "><input type='checkbox' id='check"+nowlog[i][4]+"'></div>"
+      +"<div class='col-sm-1'>"+(count+1)+"</div>"
+      +"<div class='col-sm-3' id='date"+nowlog[i][4]+"'";
+    if(isperiodic){}else{dataresult += " style='color:DodgerBlue;' contenteditable='true'";}
+    dataresult +=">"+nowlog[i][0]+"</div>"
+      +"<div class='col-sm-5' id='content"+nowlog[i][4]+"' style='word-break:break-all;color:DodgerBlue;' contenteditable='true'>"+nowlog[i][1]+"</div>"
+      +"<div class='col-sm-2'>"+nowlog[i][2]+"</div>"
+    +"</div>";
+    count++;
+  }
+  if(isperiodic){}else{
+    if((count % 2)==0){dataresult += "<div class='row'>";}else{dataresult += "<div class='row text-bg-light'>";}
+    dataresult += "<div class='col-sm-1'>新增資料</div>"
+      +"<div class='col-sm-1'>"+(count+1)+"</div>"
+      +"<div class='col-sm-3' id='date0' style='color:DodgerBlue;' contenteditable='true'>月/日，第8、9節</div>"
+      +"<div class='col-sm-5' id='content0' style='word-break:break-all;color:DodgerBlue;' contenteditable='true'>（本行若未修改則不會存入日誌資料）</div>"
+      +"<div class='col-sm-2'>"+username+"</div>"
+    +"</div>";}
+  dataresult += "</form>"
+    +"<input type='button' onclick='renewbtn("+isperiodic+")' value='更新資料'>　<input type='button' onclick='getlogdata()' value='放棄重來'>"
+    +"<BR>如果課程結束且上述資料無誤，請執行<input type='button' onclick='openWindowWithHTML()' value='產生紙本授課日誌'>　簽名後，將紙本或掃描檔逕擲教務處實驗研究組結案";
+  document.getElementById("log-result").innerHTML = dataresult;
+}
+function renewbtn(isperiodic){
+  const sdata = [sendstype, sendsname, sendtname, '', '', username, '', 0];
+  for(let i=0;i<nowlog.length;i++){
+    sdata[3] = nowlog[i][0];
+    sdata[4] = nowlog[i][1];
+    sdata[6] = '';
+    sdata[7] = nowlog[i][4];
+    let nowlogdate = document.getElementById("date"+nowlog[i][4]).textContent;
+    if(nowlog[i][0] != nowlogdate){
+      sdata[3] = nowlogdate;
+      sdata[6] = '修改';
+    }
+    let nowlogcontent = document.getElementById("content"+nowlog[i][4]).textContent;
+    if(nowlog[i][1] != nowlogcontent){
+      sdata[4] = nowlogcontent;
+      sdata[6] = '修改';
+    }
+    if(document.getElementById("check"+nowlog[i][4]).checked){
+      sdata[6] = "刪除";
+    }
+    if(sdata[6]!=""){
+      google.script.run.changeData(sdata);
+    }
+  }
+  if(isperiodic){}else{
+    nowlogdate = document.getElementById("date0").textContent;
+    nowlogcontent = document.getElementById("content0").textContent;
+    if(nowlogdate != '月/日，第8、9節' && nowlogcontent != '（本行若未修改則不會存入日誌資料）'){
+      sdata[3] = nowlogdate;
+      sdata[4] = nowlogcontent;
+      sdata[6] = '新增';
+      google.script.run.changeData(sdata);
+    }
+  }
+  setTimeout(function() {getlogdata();}, 1000);
+}
+
+function openWindowWithHTML() {
+  document.getElementById("log-result").innerHTML = "等待資料載入......";
+  let tablelog = '<table width="100%">'
+    +'<thead><tr>'
+        +'<th width="5%">項次</th>'
+        +'<th width="30%">授課時間</th>'
+        +'<th width="55%">授課內容</th>'
+        +'<th>填寫人</th>'
+    +'</tr></thead>'
+    +'<tbody>';
+    for(let i=0;i<nowlog.length;i++){
+      tablelog += '<tr class="noBreak">'
+        +'<td style="text-align:center">'+(i+1)+'</td>'
+        +'<td>'+nowlog[i][0]+'</td>'
+        +'<td style="word-break: break-all">'+nowlog[i][1]+'</td>'
+        +'<td style="text-align:center">'+nowlog[i][2]+'</td>'
+      +'</tr>';
+    }
+  tablelog += '</tbody></table>';
+  let newhtml = '<html><head><title>'+schoolyear+'-'+schoolterm+'教室日誌-'+sendstype+'-'+sendsname+'-'+sendtname+'</title>'
+  +'<style>@media print{ * { -webkit-print-color-adjust: exact;} .noBreak { break-inside: avoid;} .noPrint { display: none; } }'
+  +'@page { size: A4 portrait; margin: 20mm 10mm 5mm; }'
+  +'h1 { text-align: center;} table, th, td { border: 1px solid black; border-collapse: collapse;}'
+  +'thead{ display: table-header-group;}</style></head>'
+  +'<body><div class="noPrint"><h1 style="color:red">請按Ctrl-P列印紙本並於「授課教師簽證」處簽名後，將紙本或掃描檔逕擲教務處實驗研究組</h1></div>'
+  +'<img width="100%" src="https://tcvssls.github.io/classlog/TCVS.jpg" alt="國立頭城高級家事商業職業學校">'
+  +'<h1>'+schoolyear+'學年度第'+schoolterm+'學期'+sendstype+'授課記錄表</h1>'
+  +'<h2>科目名稱：'+sendsname+'<BR>授課教師：'+sendtname+'<BR>表定時間：'+presdate+'</h2>'
+  +'<div style="text-align:right">列印時間：'+nowdate.getFullYear()+"/"+(nowdate.getMonth()+1)+"/"+nowdate.getDate()+" "+nowdate.getHours()+":"+nowdate.getMinutes()+'</div>'
+  +tablelog
+  +'<p>若以上資料無誤，請於「授課教師簽證」處簽名後，將紙本或掃描檔逕擲教務處實驗研究組</p>'
+  +'<h2>授課教師簽證 _______________</h2>'
+  +'</body></html>';
+  let newWindow = window.open();
+  newWindow.document.write(newhtml);
+  newWindow.focus();
+  getlogdata();
+}
+</script>
+
+</body>
+</html>
